@@ -116,8 +116,9 @@ export const renameFile = async ({
     path
 }:RenameFileProps) => {
     const { databases } = await createAdminClient();
-
+    
     try {
+        console.log('Renaming...')
         const newName = `${name}.${extension}`;
         const updatedFile = await databases.updateDocument(
             appwriteConfig.databaseId,
@@ -174,4 +175,15 @@ export const deleteFile = async ({
     }catch (error) {
         handleError(error, "Failed to rename file");
     }
+}
+interface MetadataProps {
+    fileId:string;
+    path:string
+}
+
+export const addMetaData = async ({
+    fileId,
+    path
+}:MetadataProps )=>{
+    console.log('Adding metadata...')
 }

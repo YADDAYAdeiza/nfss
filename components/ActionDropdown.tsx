@@ -22,14 +22,14 @@ import {
 import Image from 'next/image'
 import { Models } from 'node-appwrite'
 import { actionsDropdownItems } from '@/constants'
-import { constructDownloadUrl } from '@/lib/utils'
+import { cn, constructDownloadUrl } from '@/lib/utils'
 import Link from 'next/link'
 import { set } from 'zod'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
 import { usePathname } from 'next/navigation'
-import { deleteFile, renameFile, updateFileUsers } from '@/lib/actions/file.actions'
-import { FileDetails, ShareInput } from './ActionsModalContent'
+import { addMetaData, deleteFile, renameFile, updateFileUsers } from '@/lib/actions/file.actions'
+import { FileDetails, ShareInput, FileMetadata} from './ActionsModalContent'
 
 
 
@@ -52,13 +52,13 @@ const ActionDropdown = ({file}:{file:Models.Document}) => {
     const handleAction = async ()=>{
         if (!action) return;
         setIsLoading(true)
-        let success =false;
+        let success = false;
 
         const actions = {
-            rename:()=>
-                renameFile({fileId:file.$id, name, extension:file.extension, path}),
-                share:()=>updateFileUsers({fileId:file.$id, emails, path }),
-                delete:() => deleteFile({fileId:file.$id, path, bucketFileId:file.bucketFileId}),
+            rename:()=>renameFile({fileId:file.$id, name, extension:file.extension, path}),
+            share:()=>updateFileUsers({fileId:file.$id, emails, path }),
+            delete:() => deleteFile({fileId:file.$id, path, bucketFileId:file.bucketFileId}),
+            metadata:()=>addMetaData({fileId:file.$id, path})
         }
 
         success = await actions[action.value as keyof typeof actions]();
@@ -113,9 +113,10 @@ const ActionDropdown = ({file}:{file:Models.Document}) => {
                         <span className='delete-file-name'>{file.name}</span>
                     </p>
                 )}
+                {value === 'metadata' && <FileMetadata />}
 
             </DialogHeader>
-            {["rename", "delete", "share"].includes(value)&&(
+            {["rename", "delete", "share", "metadata"].includes(value)&&(
                 <DialogFooter className='flex flex-col gap-3 md:flex-row'>
                     <Button onClick={closeAllModals}
                         className='modal-cancel-button'>
@@ -148,45 +149,45 @@ const ActionDropdown = ({file}:{file:Models.Document}) => {
                 alt="dots"
                 width={34}
                 height={34}
-            />
+                />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
             <DropdownMenuLabel className='max-w-[200px] truncate'>{file.name}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             {actionsDropdownItems.map((actionItem)=>(
                 <DropdownMenuItem
-                    key={actionItem.value}
-                    className='shad-no-focus'
-                    onClick={()=>{
-                        setAction(actionItem)
-                        if(
-                            ["rename", "share", "delete", "details"].includes(actionItem.value)
-                        ){
-                            setIsModalOpen(true)
-                        }
-                        }}>
-                        {actionItem.value=== 'download' ? <Link 
+                key={actionItem.value}
+                className='shad-no-focus'
+                onClick={()=>{
+                    setAction(actionItem)
+                    if(
+                        ["rename", "share", "delete", "details", "metadata"].includes(actionItem.value)
+                    ){
+                        setIsModalOpen(true)
+                    }
+                }}>
+                        {actionItem.value === 'download' ? <Link 
                             href = {constructDownloadUrl(file.bucketFileId)}
                             download={file.name}
                             className="flex items-center gap-2"
-                        > 
+                            > 
                             <Image
                                 src={actionItem.icon}
                                 alt={actionItem.label}
                                 width={30}
                                 height={30}
-                            />
+                                />
                             {actionItem.label}
                         </Link>:
                         <div 
-                            className="flex items-center gap-2"
+                        className="flex items-center gap-2"
                         > 
                             <Image
                                 src={actionItem.icon}
                                 alt={actionItem.label}
                                 width={30}
                                 height={30}
-                            />
+                                />
                             {actionItem.label}
                         </div>
                     }
