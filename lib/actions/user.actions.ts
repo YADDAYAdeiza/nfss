@@ -126,3 +126,37 @@ export const signInUser = async({email}:{email:string})=>{
         handleError(error, "Failed to sign in user")
     }
 }
+
+export const createMetada = async({companyName, companyEmail}:{companyName:string; companyEmail:string})=>{
+    // const existingUser =  await getUserByEmail(email)
+    // const accountId = await sendEmailOTP({ email })
+
+    // if (!accountId) throw new Error("Failed to send an OTP")
+
+    //     if(!existingUser){
+    //         const { databases } = await createAdminClient();
+
+    //         await databases.createDocument(
+    //             appwriteConfig.databaseId,
+    //             appwriteConfig.usersCollectionId,
+    //             ID.unique(),
+    //             {
+    //                 fullName,
+    //                 email,
+    //                 avatar:avatarPlaceholderUrl,
+    //                 accountId,
+    //             },
+
+    //         )
+    //     }
+    let accountId = 12;
+    console.log('creating metadata');
+
+
+        return parseStringify({accountId})
+        
+}
+
+export const updateMetadata = async ({companyEmail}:{companyEmail:string})=>{
+    console.log('Updating metadata');
+}

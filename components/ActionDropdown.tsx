@@ -29,7 +29,8 @@ import { Input } from './ui/input'
 import { Button } from './ui/button'
 import { usePathname } from 'next/navigation'
 import { addMetaData, deleteFile, renameFile, updateFileUsers } from '@/lib/actions/file.actions'
-import { FileDetails, ShareInput, FileMetadata} from './ActionsModalContent'
+import { FileDetails, ShareInput} from './ActionsModalContent'
+import MetadataForm from './MetadataForm'
 
 
 
@@ -113,10 +114,10 @@ const ActionDropdown = ({file}:{file:Models.Document}) => {
                         <span className='delete-file-name'>{file.name}</span>
                     </p>
                 )}
-                {value === 'metadata' && <FileMetadata />}
+                {value === 'metadata' && <MetadataForm type='metadata-out' />}
 
             </DialogHeader>
-            {["rename", "delete", "share", "metadata"].includes(value)&&(
+            {["rename", "delete", "share"].includes(value)&&(
                 <DialogFooter className='flex flex-col gap-3 md:flex-row'>
                     <Button onClick={closeAllModals}
                         className='modal-cancel-button'>

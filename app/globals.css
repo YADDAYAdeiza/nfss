@@ -500,3 +500,12 @@
     @apply size-full object-cover object-center !important;
   }
 }
+
+/* Metadata Form */
+.metadata-form {
+  @apply flex max-h-[600px] pt-[650px] w-full max-w-[580px] flex-col justify-center space-y-6 transition-all lg:h-full lg:space-y-8 !important;
+}
+
+.metadata-form-title {
+  @apply h2 text-center text-light-100 md:text-center !important;
+}
