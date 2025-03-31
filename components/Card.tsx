@@ -2,12 +2,14 @@ import Link from 'next/link'
 import { Models } from 'node-appwrite'
 import React from 'react'
 import Thumbnail from './Thumbnail'
-import { convertFileSize } from '@/lib/utils'
+import { cn, convertFileSize } from '@/lib/utils'
 import FormattedDateTime from './FormattedDateTime'
 import ActionDropdown from './ActionDropdown'
 
 const Card = ({file}:{file:Models.Document}) => {
+  console.log(file.extension)
   return (
+    <div className={cn(`p-1 ${file.extension=== 'docx' ? 'bg-gray-400':'bg-yellow-100'}`)}>
 
     <Link href={file.url} target="_blank" className='file-card'>{file.name}
       <div className='flex justify-between'>
@@ -17,7 +19,7 @@ const Card = ({file}:{file:Models.Document}) => {
           url={file.url}
           className='!size-20'
           imageClassName='!size-11'
-        />
+          />
 
         <div className='flex flex-col items-end justify-between'>
           <ActionDropdown file={file} />
@@ -31,6 +33,7 @@ const Card = ({file}:{file:Models.Document}) => {
         <p className='caption line-clamp-1 text-light-200'>By: {file.owner.fullName}</p>
       </div>
     </Link>
+    </div>
   )
 }
 

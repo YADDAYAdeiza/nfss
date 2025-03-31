@@ -20,6 +20,8 @@ import Link from 'next/link'
 import { createAccount, createMetada, signInUser, updateMetadata } from '@/lib/actions/user.actions'
 import OTPModal from './OTPModal'
 import MetadataView from './MetadataView'
+import { updateFileMetadata } from '@/lib/actions/file.actions'
+import { usePathname } from 'next/navigation'
 
 
 type FormType = "metadata-in"  | "metadata-out";
@@ -28,7 +30,9 @@ const authFormSchema = (formType:FormType)=>{
   return z.object({
     companyName:z.string().min(2).max(50),
     companyAddress:z.string(),
+    state:z.string(),
     companyEmail:z.string().email(),
+    phoneNo:z.string().max(11),
     latitude: z
     .number()
     .min(-90, "Latitude must be between -90 and 90")
@@ -46,17 +50,18 @@ const authFormSchema = (formType:FormType)=>{
   })
 }
 
-const MetadataForm = ({ type }:{ type:FormType }) => {
+const MetadataForm = ({ type, fileId, closeAllModals }:{ type:FormType;fileId:string, closeAllModals:any}) => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [accountId, setAccountId] = useState(null)
   const [metadataType, setMetadataType] = useState('metadata-in')
   const formSchema = authFormSchema(type);
+  const path = usePathname();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      companyName:"", companyAddress:"", latitude:0, longitude:0, inspectionType:"", inspectedProductLine:"", companyEmail:"", 
+      companyName:"", companyAddress:"" , companyEmail:"",phoneNo:"" , state:"", latitude:0, longitude:0, inspectionType:"", inspectedProductLine:""
     },
   })
  
@@ -66,12 +71,27 @@ const MetadataForm = ({ type }:{ type:FormType }) => {
     setErrorMessage("")
     
     try {
-      const user = type === metadataType? await createMetada({companyName:values.companyName || "", companyEmail:values.companyEmail}):await updateMetadata({companyEmail:values.companyEmail});
-      setAccountId(user.accountId)
+      const user = (type === metadataType) && await updateFileMetadata({
+        fileId:fileId,
+        companyName:values.companyName,
+        companyAddress:values.companyAddress,
+        state:values.state,
+        companyEmail:values.companyEmail, 
+        phoneNo:values.phoneNo,
+        latitude:values.latitude,
+        longitude:values.longitude,
+        inspectionType:values.inspectionType,
+        inspectedProductLine:values.inspectedProductLine,
+        gmpStatus:values.gmpStatus,
+        inspectors:values.inspectors,
+        path});
+
+        closeAllModals();
+      // setAccountId(user.accountId)
     }catch{
       setErrorMessage('Failed to create account.  Please try again.')
     }finally{
-      setIsLoading(false)
+      setIsLoading(false);
     }
 
   }
@@ -94,7 +114,7 @@ const MetadataForm = ({ type }:{ type:FormType }) => {
               <div className='shad-form-item'>
                 <FormLabel className='shad-form-label'>Company Name</FormLabel>
                 <FormControl>
-                 {type !== metadataType? <Input placeholder="Enter Company Name" className='shad-input' {...field}/>: <p>Something</p> }
+                 {type === metadataType? <Input placeholder="Enter Company Name" className='shad-input' {...field}/>: <p>Something</p> }
                 </FormControl>
               </div>
               <FormMessage className='shad-form-message' />
@@ -109,7 +129,7 @@ const MetadataForm = ({ type }:{ type:FormType }) => {
               <div className='shad-form-item'>
                 <FormLabel className='shad-form-label'>Company Address</FormLabel>
                 <FormControl>
-                  <Input placeholder="Enter your full email" className='shad-input' {...field} />
+                 {type === metadataType?  <Input placeholder="Enter your full email" className='shad-input' {...field} />: <p>Some Address</p>}
                 </FormControl>
               </div>
               <FormMessage className='shad-form-message' />
@@ -124,7 +144,37 @@ const MetadataForm = ({ type }:{ type:FormType }) => {
               <div className='shad-form-item'>
                 <FormLabel className='shad-form-label'>Company Email</FormLabel>
                 <FormControl>
-                  <Input placeholder="Enter your full email" className='shad-input' {...field} />
+                  {type === metadataType? <Input placeholder="Enter your full email" className='shad-input' {...field} />: <p>Some Email</p>}
+                </FormControl>
+              </div>
+              <FormMessage className='shad-form-message' />
+            </FormItem>
+          )}
+        />
+         <FormField
+          control={form.control}
+          name="phoneNo"
+          render={({ field }) => (
+            <FormItem>
+              <div className='shad-form-item'>
+                <FormLabel className='shad-form-label'>Phone number</FormLabel>
+                <FormControl>
+                  {type === metadataType? <Input placeholder="Enter phone number" className='shad-input' {...field} />: <p>Some phone number</p>}
+                </FormControl>
+              </div>
+              <FormMessage className='shad-form-message' />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="state"
+          render={({ field }) => (
+            <FormItem>
+              <div className='shad-form-item'>
+                <FormLabel className='shad-form-label'>State</FormLabel>
+                <FormControl>
+                  {type === metadataType? <Input placeholder="Enter state" className='shad-input' {...field} />: <p>Some State</p>}
                 </FormControl>
               </div>
               <FormMessage className='shad-form-message' />
@@ -139,7 +189,7 @@ const MetadataForm = ({ type }:{ type:FormType }) => {
               <div className='shad-form-item'>
                 <FormLabel className='shad-form-label'>Latitude</FormLabel>
                 <FormControl>
-                  <Input placeholder="Enter Company Name" className='shad-input' {...field} />
+                 {type === metadataType?  <Input placeholder="Enter Company Name" className='shad-input' {...field} />: <p>0.00000</p>}
                 </FormControl>
               </div>
               <FormMessage className='shad-form-message' />
@@ -154,7 +204,7 @@ const MetadataForm = ({ type }:{ type:FormType }) => {
               <div className='shad-form-item'>
                 <FormLabel className='shad-form-label'>longitude</FormLabel>
                 <FormControl>
-                  <Input placeholder="Enter Company Name" className='shad-input' {...field} />
+                 {type === metadataType? <Input placeholder="Enter Company Name" className='shad-input' {...field} />: <p>0.0000000</p>}
                 </FormControl>
               </div>
               <FormMessage className='shad-form-message' />
@@ -169,22 +219,7 @@ const MetadataForm = ({ type }:{ type:FormType }) => {
               <div className='shad-form-item'>
                 <FormLabel className='shad-form-label'>Inspection Type</FormLabel>
                 <FormControl>
-                  <Input placeholder="Enter Company Name" className='shad-input' {...field} />
-                </FormControl>
-              </div>
-              <FormMessage className='shad-form-message' />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="longitude"
-          render={({ field }) => (
-            <FormItem>
-              <div className='shad-form-item'>
-                <FormLabel className='shad-form-label'>longitude</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter Company Name" className='shad-input' {...field} />
+                 {type === metadataType?<Input placeholder="Enter Company Name" className='shad-input' {...field} />: <p>Inspection Type</p>}
                 </FormControl>
               </div>
               <FormMessage className='shad-form-message' />
@@ -199,7 +234,7 @@ const MetadataForm = ({ type }:{ type:FormType }) => {
               <div className='shad-form-item'>
                 <FormLabel className='shad-form-label'>Product Line</FormLabel>
                 <FormControl>
-                  <Input placeholder="Enter Company Name" className='shad-input' {...field} />
+                {type === metadataType? <Input placeholder="Enter Product Line" className='shad-input' {...field} />: <p>An Inspected Product Line</p>}
                 </FormControl>
               </div>
               <FormMessage className='shad-form-message' />
@@ -214,7 +249,7 @@ const MetadataForm = ({ type }:{ type:FormType }) => {
               <div className='shad-form-item'>
                 <FormLabel className='shad-form-label'>GMP Status</FormLabel>
                 <FormControl>
-                  <Input placeholder="Enter Company Name" className='shad-input' {...field} />
+                 {type === metadataType? <Input placeholder="Enter Risk Level" className='shad-input' {...field} />: <p>GMP Status</p>}
                 </FormControl>
               </div>
               <FormMessage className='shad-form-message' />
@@ -229,18 +264,18 @@ const MetadataForm = ({ type }:{ type:FormType }) => {
               <div className='shad-form-item'>
                 <FormLabel className='shad-form-label'>Inspectors</FormLabel>
                 <FormControl>
-                  <Input placeholder="Enter Company Name" className='shad-input' {...field} />
+                {type === metadataType? <Input placeholder="Enter Company Name" className='shad-input' {...field} />: <p>Lead Inspector</p>}
                 </FormControl>
               </div>
               <FormMessage className='shad-form-message' />
             </FormItem>
           )}
         />
-        <Button type="submit" className='form-submit-button' disabled={isLoading}>
+       {type === metadataType?  <Button type="submit" className='form-submit-button' disabled={isLoading}>
           {type === metadataType ? "Submit": "update"}
           {isLoading && 
           <Image src="/assets/icons/loader.svg" alt="loader" width = {24} height={24} className = "ml-2 animate-spin" />}
-        </Button>
+        </Button>:null}
 
         {errorMessage&&<p className='error-message'>*{errorMessage}</p>}
 

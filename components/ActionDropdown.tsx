@@ -97,7 +97,7 @@ const ActionDropdown = ({file}:{file:Models.Document}) => {
             <DialogHeader className='flex flex-col gap-3'>
             <DialogTitle className='text-center text-light-100'>
                 {label}
-                </DialogTitle>
+            </DialogTitle>
                 {value==="rename" &&
                 (<Input
                 type ='text'
@@ -114,7 +114,7 @@ const ActionDropdown = ({file}:{file:Models.Document}) => {
                         <span className='delete-file-name'>{file.name}</span>
                     </p>
                 )}
-                {value === 'metadata' && <MetadataForm type='metadata-out' />}
+                {value === 'metadata' && <MetadataForm type='metadata-in' fileId = {file.$id} closeAllModals = {closeAllModals}/>}
 
             </DialogHeader>
             {["rename", "delete", "share"].includes(value)&&(
@@ -194,6 +194,7 @@ const ActionDropdown = ({file}:{file:Models.Document}) => {
                     }
                 </DropdownMenuItem>
             ))}
+<DropdownMenuLabel className='max-w-[200px] truncate'>{file.$id}</DropdownMenuLabel>
         </DropdownMenuContent>
         </DropdownMenu>
         {renderDialogContent()}

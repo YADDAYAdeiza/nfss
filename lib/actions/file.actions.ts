@@ -187,3 +187,206 @@ export const addMetaData = async ({
 }:MetadataProps )=>{
     console.log('Adding metadata...')
 }
+
+
+// export const createMetada = async({companyName, companyEmail}:{companyName:string; companyEmail:string})=>{
+//     const { databases } = await createAdminClient();
+
+//     await databases.createDocument(
+//         appwriteConfig.databaseId,
+//         appwriteConfig.usersCollectionId,
+//         ID.unique(),
+//         {
+//             fullName,
+//             email,
+//             avatar:avatarPlaceholderUrl,
+//             accountId,
+//         },
+
+//     )
+
+//     const company = await databases.createDocument(
+//     "database_id",
+//     "Companys",
+//     "unique()",
+//     {
+//         name: "TechCorp",
+//         industry: "Software",
+//         location: "New York",
+//         website: "https://techcorp.com"
+//     }
+// );
+
+//     // const existingUser =  await getUserByEmail(email)
+//     // const accountId = await sendEmailOTP({ email })
+
+//     // if (!accountId) throw new Error("Failed to send an OTP")
+
+//     //     if(!existingUser){
+//     //         const { databases } = await createAdminClient();
+
+//     //         await databases.createDocument(
+//     //             appwriteConfig.databaseId,
+//     //             appwriteConfig.usersCollectionId,
+//     //             ID.unique(),
+//     //             {
+//     //                 fullName,
+//     //                 email,
+//     //                 avatar:avatarPlaceholderUrl,
+//     //                 accountId,
+//     //             },
+
+//     //         )
+//     //     }
+//     let accountId = 12;
+//     console.log('creating metadata', companyName);
+
+
+//         // return parseStringify({accountId})
+        
+// }
+
+export const updateMetadata = async ({companyEmail}:{companyEmail:string})=>{
+    console.log('Updating metadata');
+}
+//we need to consider fileId and see if it should be used in updating the product Line;
+export const updateFileMetadata = async ({
+    fileId,
+    companyName,
+        companyAddress,
+        state,
+        companyEmail,
+        phoneNo,
+        latitude,
+        longitude,
+        inspectionType,
+        inspectedProductLine,
+        gmpStatus,
+        inspectors,
+        path
+}:{
+    fileId:string;
+    companyName:string;
+        companyAddress:string;
+        state:string;
+        companyEmail:string;
+        phoneNo:string;
+        latitude:unknown;
+        longitude:unknown;
+        inspectionType:string;
+        inspectedProductLine:string;
+        gmpStatus:string;
+        inspectors:string;
+        path:string;
+}) => {
+    const { databases } = await createAdminClient();
+
+    try {
+        console.log('Inside here')
+
+    async function createCompany(){
+        //if the company exists in metadata
+        const document = await databases.listDocuments(
+            appwriteConfig.databaseId,
+            appwriteConfig.companiesCollectionId,
+            [Query.equal("CompanyName", companyName)]);
+            
+            console.log('This is document: ', document);
+            let updatedFileIds:string[] = [];
+
+         if (document.total){ //update the company fileIds with the storage fileId
+             //run update operation
+             updatedFileIds = document.documents[0].FileIds;
+             updatedFileIds.push(fileId); //if this document has not been linked, add it to the company; a company can have many inspection reports
+             console.log('This is updatedFileIds', updatedFileIds);
+             const companiesDocument={
+                CompanyName:companyName,
+                FileIds:updatedFileIds
+            };
+            const response = await databases.updateDocument(
+                appwriteConfig.databaseId,
+                 appwriteConfig.companiesCollectionId,
+                document.documents[0].$id, 
+                companiesDocument);
+
+                console.log('This is response,', response)
+
+         }   else{ //create the company
+           console.log('About to create document');
+           updatedFileIds.push(fileId);
+           const companiesDocument={
+                CompanyName:companyName,
+                FileIds:updatedFileIds
+            };
+
+            const newCompany = await databases.createDocument(
+                appwriteConfig.databaseId,
+                appwriteConfig.companiesCollectionId,
+                ID.unique(),
+                companiesDocument,
+            ).catch(async (error:unknown)=>{
+                handleError(error, "Failed to create Companies document");
+            })
+            return newCompany.$id;
+         }
+            // if (document.documents[0].FileIds.contains(fileId)) return; //if this document has been linked to this company, return
+
+    }
+
+    async function createCompanyAddress(companyId:string) { 
+        const companiesAddressDocument={
+            Location:companyAddress,
+            State:state,
+            Email:companyEmail,
+            PhoneNo:phoneNo,
+            Lat:latitude,
+            Lng:longitude,
+            CompanyId:companyId
+        };
+        
+        const newCompanyAddress = await databases.createDocument(
+            appwriteConfig.databaseId,
+            appwriteConfig.companiesAddressCollectionId,
+            ID.unique(),
+            companiesAddressDocument,
+        )
+        .catch(async (error:unknown)=>{
+            handleError(error, "Failed to create CompaniesAddress document");
+        })
+        console.log(newCompanyAddress);
+    }
+
+        (async () => {
+            const companyId = await createCompany(); // Create company and get ID
+            await createCompanyAddress(companyId); // Link Address to Company
+            //         return parseStringify(updatedFile);
+        })();
+        
+    } catch(error:unknown){
+        handleError(error, "Failed to create file document");
+    }finally{
+        revalidatePath(path)
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+    //     const updatedFile = await databases.updateDocument(
+    //         appwriteConfig.databaseId,
+    //         appwriteConfig.companiesCollection,
+    //         fileId,
+    //         {users:emails,},);
+    //         revalidatePath(path)
+    //         return parseStringify(updatedFile);
+    // }catch (error) {
+    //     handleError(error, "Failed to rename file");
+    // }
+}
