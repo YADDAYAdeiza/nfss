@@ -282,58 +282,91 @@ export const updateFileMetadata = async ({
     const { databases } = await createAdminClient();
 
     try {
-        console.log('Inside here')
-
-    async function createCompany(){
-        //if the company exists in metadata
-        const document = await databases.listDocuments(
-            appwriteConfig.databaseId,
-            appwriteConfig.companiesCollectionId,
-            [Query.equal("CompanyName", companyName)]);
+        async function createCompany(){
+            console.log('Working...')
+            // if the company exists in metadata
             
-            console.log('This is document: ', document);
-            let updatedFileIds:string[] = [];
-
-         if (document.total){ //update the company fileIds with the storage fileId
-             //run update operation
-             updatedFileIds = document.documents[0].FileIds;
-             updatedFileIds.push(fileId); //if this document has not been linked, add it to the company; a company can have many inspection reports
-             console.log('This is updatedFileIds', updatedFileIds);
-             const companiesDocument={
-                CompanyName:companyName,
-                FileIds:updatedFileIds
-            };
-            const response = await databases.updateDocument(
-                appwriteConfig.databaseId,
-                 appwriteConfig.companiesCollectionId,
-                document.documents[0].$id, 
-                companiesDocument);
-
-                console.log('This is response,', response)
-
-         }   else{ //create the company
-           console.log('About to create document');
-           updatedFileIds.push(fileId);
-           const companiesDocument={
-                CompanyName:companyName,
-                FileIds:updatedFileIds
-            };
-
-            const newCompany = await databases.createDocument(
+            const document = await databases.listDocuments(
                 appwriteConfig.databaseId,
                 appwriteConfig.companiesCollectionId,
-                ID.unique(),
-                companiesDocument,
-            ).catch(async (error:unknown)=>{
-                handleError(error, "Failed to create Companies document");
-            })
-            return newCompany.$id;
-         }
-            // if (document.documents[0].FileIds.contains(fileId)) return; //if this document has been linked to this company, return
+                [Query.equal("CompanyName", companyName)]);
+                let cId:string;
+                if (document.total > 0){ //if company exists
+                    // cId = document.documents[0].FileIds;
+                    updateCompany(fileId,document.documents[0]);
+    // async function updateCompanyAddress(fileId:string, oldCompanyAdd:any){
 
-    }
+                    cId = document.documents[0].$id;
+                    console.log('This is cId: ',cId);
+                    console.log('This is companyAddress: ',companyAddress);
+                    checkIfAddressExists(cId, companyAddress, fileId).then(exists => { // fileId is passed in case address exists, still to update it
+                        if (exists) {
+                            console.log("Address already exists, do not insert again.");
+                            //update existing address with fileStorage id;
+                            console.log('This is exists: ');
+                            console.log(exists);
+                            updateCompanyAddress(fileId, exists.documents[0]);
+                            // return 0;
+                        } else {
+                            console.log("No entry found, you can add this address.");
+                            createCompanyAddress(cId, fileId);
+                            
+                        }
+                    });
+                }else { //create new company
+                    console.log('Company Does not Exists...');
+                    createNewCompany().then(id=>{
+                        if (id){
+                            createCompanyAddress(id, fileId)
+                        }
+                    })
+                }
+            }
+                
+            async function checkIfAddressExists(companyId:string, address:string, fileId:string) {
+                try {
+                    const response = await databases.listDocuments(
+                        appwriteConfig.databaseId,
+                        appwriteConfig.companiesAddressCollectionId,
+                        [
+                            Query.equal('CompanyId', companyId),
+                            Query.equal('Location', address) // Assuming address field exists
+                    ]);
+                    console.log('Company address exists, here it is: ')
+                    console.log(response)
 
-    async function createCompanyAddress(companyId:string) { 
+                    //update address with storage fileIds -inspection file reports
+                    // response.documents[0]?.FileIds.push(fileId)
+                    // return response; // Returns true if entry exists, false otherwise
+                    return response.total > 0 && response; // Returns entire response if entry exists, false otherwise
+                } catch (error) {
+                    console.error(error);
+                    return false;
+                }
+            }
+
+            async function createNewCompany(){
+                console.log('Creating new company ...');
+                let updatedFileIds:string[] = [];
+                updatedFileIds.push(fileId);
+                const companiesDocument={
+                                CompanyName:companyName,
+                                FileIds:updatedFileIds
+                            };
+                    
+                            const newCompany = await databases.createDocument(
+                                    appwriteConfig.databaseId,
+                                    appwriteConfig.companiesCollectionId,
+                                    ID.unique(),
+                                    companiesDocument,
+                                ).catch(async (error:unknown)=>{
+                                        handleError(error, "Failed to create Companies document");
+                                    })
+                return newCompany.$id;
+            }
+            
+
+    async function createCompanyAddress(companyId:string, fileId:string) { 
         const companiesAddressDocument={
             Location:companyAddress,
             State:state,
@@ -341,7 +374,8 @@ export const updateFileMetadata = async ({
             PhoneNo:phoneNo,
             Lat:latitude,
             Lng:longitude,
-            CompanyId:companyId
+            CompanyId:companyId,
+            FileIds:[]
         };
         
         const newCompanyAddress = await databases.createDocument(
@@ -352,13 +386,19 @@ export const updateFileMetadata = async ({
         )
         .catch(async (error:unknown)=>{
             handleError(error, "Failed to create CompaniesAddress document");
+        }).then( async (newCompanyAdd)=>{
+            console.log('This is the new address')
+            console.log(newCompanyAdd)
+
+            updateCompanyAddress(fileId, newCompanyAdd);
+            
         })
-        console.log(newCompanyAddress);
     }
 
         (async () => {
             const companyId = await createCompany(); // Create company and get ID
-            await createCompanyAddress(companyId); // Link Address to Company
+                // await createCompanyAddress(companyId); // Link Address to Company
+            // }
             //         return parseStringify(updatedFile);
         })();
         
@@ -369,24 +409,38 @@ export const updateFileMetadata = async ({
 
     }
 
+    async function updateCompanyAddress(fileId:string, oldCompanyAdd:any){
+                if (oldCompanyAdd.FileIds.includes(fileId)){
+                    //do nothing
+                    console.log('Already contains file')
+                } else { //push the fileId in storage to the address database
 
+                    oldCompanyAdd.FileIds.push(fileId);
+                    let updatedFileIds = oldCompanyAdd.FileIds;
+                    
+                    const updatedFile = await databases.updateDocument(
+                        appwriteConfig.databaseId,
+                        appwriteConfig.companiesAddressCollectionId,
+                        oldCompanyAdd.$id,
+                        {FileIds:updatedFileIds})
+                    }
+    }
 
+    async function updateCompany(fileId:string, oldCompany:any){
+        if (oldCompany.FileIds.includes(fileId)){
+                    //do nothing
+                    console.log('Already contains file')
+                } else { //push the fileId in storage to the address database
 
+                    // oldCompany.FileIds.push(fileId);
+                    let updatedFileIds = [ ...oldCompany.FileIds, fileId];
+                    
+                    const updatedFile = await databases.updateDocument(
+                        appwriteConfig.databaseId,
+                        appwriteConfig.companiesCollectionId,
+                        oldCompany.$id,
+                        {FileIds:updatedFileIds})
+                    }
+    }
 
-
-
-
-
-
-
-    //     const updatedFile = await databases.updateDocument(
-    //         appwriteConfig.databaseId,
-    //         appwriteConfig.companiesCollection,
-    //         fileId,
-    //         {users:emails,},);
-    //         revalidatePath(path)
-    //         return parseStringify(updatedFile);
-    // }catch (error) {
-    //     handleError(error, "Failed to rename file");
-    // }
 }
