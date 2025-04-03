@@ -5,11 +5,22 @@ import Thumbnail from './Thumbnail'
 import { cn, convertFileSize } from '@/lib/utils'
 import FormattedDateTime from './FormattedDateTime'
 import ActionDropdown from './ActionDropdown'
+import Image from 'next/image'
 
 const Card = ({file}:{file:Models.Document}) => {
   console.log(file.extension)
+  
   return (
-    <div className={cn(`p-1 ${file.extension=== 'docx' ? 'bg-gray-400':'bg-yellow-100'}`)}>
+    <div className={cn(`p-1 relative ${file.extension=== 'docx' ? 'bg-gray-400':'bg-yellow-100'}`)}> 
+    {/* //check for prsence of metadata, and use it in the color coding. */}
+    {(file.CompanyAddressIds.length >0) && <Image 
+      src='/assets/icons/metadata-checked.png' 
+      width={24}
+      height={24}
+      alt='metadata-tick'
+      className='absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 transition-opacity duration-1000 ${
+          visible ? "opacity-100" : "opacity-0"}`'
+    />}
 
     <Link href={file.url} target="_blank" className='file-card'>{file.name}
       <div className='flex justify-between'>
@@ -32,6 +43,7 @@ const Card = ({file}:{file:Models.Document}) => {
         <FormattedDateTime date = {file.$createdAt} className="body-2 text-light-100" />
         <p className='caption line-clamp-1 text-light-200'>By: {file.owner.fullName}</p>
       </div>
+     
     </Link>
     </div>
   )

@@ -42,6 +42,7 @@ export const uploadFile = async({file, ownerId, accountId, path}:UploadFileProps
             accountId,
             users:[],
             bucketFileId: bucketFile.$id,
+            CompanyAddressIds:[]
         };
 
         const newFile = await databases.createDocument(
@@ -282,6 +283,16 @@ export const updateFileMetadata = async ({
     const { databases } = await createAdminClient();
 
     try {
+        async function getFileDocument(fileId:string){
+            const fileDocument = await databases.getDocument(
+                appwriteConfig.databaseId,
+                appwriteConfig.filesCollectionId,
+                fileId);
+
+                return fileDocument;
+        }
+
+
         async function createCompany(){
             console.log('Working...')
             // if the company exists in metadata
@@ -305,11 +316,18 @@ export const updateFileMetadata = async ({
                             //update existing address with fileStorage id;
                             console.log('This is exists: ');
                             console.log(exists);
-                            updateCompanyAddress(fileId, exists.documents[0]);
+                            updateCompanyAddress(fileId, exists.documents[0]).then(companyAddId=>{
+                                getFileDocument(fileId).then(fileDocument=>{
+                                    updateFile(fileId,fileDocument,companyAddId)
+
+                                })
+                            });
+                            //update File with CompanyAddressId
                             // return 0;
                         } else {
                             console.log("No entry found, you can add this address.");
                             createCompanyAddress(cId, fileId);
+                            //update File with CompanyAddressId
                             
                         }
                     });
@@ -390,7 +408,11 @@ export const updateFileMetadata = async ({
             console.log('This is the new address')
             console.log(newCompanyAdd)
 
-            updateCompanyAddress(fileId, newCompanyAdd);
+            updateCompanyAddress(fileId, newCompanyAdd).then(companyAddId=>{
+                    getFileDocument(fileId).then(fileDocument=>{
+                        updateFile(fileId,fileDocument,companyAddId)
+                    })
+            });
             
         })
     }
@@ -406,7 +428,7 @@ export const updateFileMetadata = async ({
         handleError(error, "Failed to create file document");
     }finally{
         revalidatePath(path)
-
+        
     }
 
     async function updateCompanyAddress(fileId:string, oldCompanyAdd:any){
@@ -423,24 +445,44 @@ export const updateFileMetadata = async ({
                         appwriteConfig.companiesAddressCollectionId,
                         oldCompanyAdd.$id,
                         {FileIds:updatedFileIds})
+                
+                        return updatedFile.$id
                     }
-    }
 
+        // return oldCompanyAdd.$id
+    }
+    
     async function updateCompany(fileId:string, oldCompany:any){
         if (oldCompany.FileIds.includes(fileId)){
-                    //do nothing
-                    console.log('Already contains file')
-                } else { //push the fileId in storage to the address database
-
-                    // oldCompany.FileIds.push(fileId);
-                    let updatedFileIds = [ ...oldCompany.FileIds, fileId];
-                    
-                    const updatedFile = await databases.updateDocument(
-                        appwriteConfig.databaseId,
-                        appwriteConfig.companiesCollectionId,
-                        oldCompany.$id,
-                        {FileIds:updatedFileIds})
-                    }
+            //do nothing
+            console.log('Already contains file')
+        } else { //push the fileId in storage to the address database
+            
+            // oldCompany.FileIds.push(fileId);
+            let updatedFileIds = [ ...oldCompany.FileIds, fileId];
+            
+            const updatedFile = await databases.updateDocument(
+                appwriteConfig.databaseId,
+                appwriteConfig.companiesCollectionId,
+                oldCompany.$id,
+                {FileIds:updatedFileIds})
+            }
+        }
+        
+        async function updateFile(fileId:string, fileDocument:any, companyAddId:string){
+                    if (fileDocument.CompanyAddressIds.includes(companyAddId)){
+                        //do nothing
+                        console.log('Already contains file')
+                    } else { //push the fileId in storage to the address database
+    
+                        fileDocument.CompanyAddressIds.push(companyAddId)//company Address Id;
+                        let updatedFileIds = fileDocument.CompanyAddressIds;
+                        
+                        const updatedFile = await databases.updateDocument(
+                            appwriteConfig.databaseId,
+                            appwriteConfig.filesCollectionId,
+                            fileId,
+                            {CompanyAddressIds:updatedFileIds})
+                        }
+        }
     }
-
-}
