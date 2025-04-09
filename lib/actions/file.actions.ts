@@ -42,7 +42,8 @@ export const uploadFile = async({file, ownerId, accountId, path}:UploadFileProps
             accountId,
             users:[],
             bucketFileId: bucketFile.$id,
-            CompanyAddressIds:[]
+            CompanyAddressIds:[],
+            CompanyAddress:[]
         };
 
         const newFile = await databases.createDocument(
@@ -102,7 +103,7 @@ export const getFiles =async({types = [], searchText = '', sort = '$createdAt-de
             queries,
         );
 
-        console.log({files})
+        console.log('Files returned: ', {files});
 
         return parseStringify(files)
     }catch (error){
@@ -296,7 +297,7 @@ export const updateFileMetadata = async ({
         async function createCompany(){
             console.log('Working...')
             // if the company exists in metadata
-            
+            console.log('This is company name: ', companyName)
             const document = await databases.listDocuments(
                 appwriteConfig.databaseId,
                 appwriteConfig.companiesCollectionId,
@@ -310,15 +311,20 @@ export const updateFileMetadata = async ({
                     cId = document.documents[0].$id;
                     console.log('This is cId: ',cId);
                     console.log('This is companyAddress: ',companyAddress);
-                    checkIfAddressExists(cId, companyAddress, fileId).then(exists => { // fileId is passed in case address exists, still to update it
+                  return  checkIfAddressExists(cId, companyAddress, fileId).then(exists => { // fileId is passed in case address exists, still to update it
                         if (exists) {
                             console.log("Address already exists, do not insert again.");
                             //update existing address with fileStorage id;
                             console.log('This is exists: ');
                             console.log(exists);
-                            updateCompanyAddress(fileId, exists.documents[0]).then(companyAddId=>{
-                                getFileDocument(fileId).then(fileDocument=>{
-                                    updateFile(fileId,fileDocument,companyAddId)
+                           return updateCompanyAddress(fileId, exists.documents[0]).then(companyAddId=>{
+                              return  getFileDocument(fileId).then(fileDocument=>{
+                                  return  updateFile(fileId,fileDocument,companyAddId, exists).then(fileDocument=>{
+                                        console.log('This is the document...')
+                                        console.log(fileDocument)
+                                        return parseStringify(fileDocument);
+                                        
+                                    })
 
                                 })
                             });
@@ -326,16 +332,16 @@ export const updateFileMetadata = async ({
                             // return 0;
                         } else {
                             console.log("No entry found, you can add this address.");
-                            createCompanyAddress(cId, fileId);
+                           return createCompanyAddress(cId, fileId);
                             //update File with CompanyAddressId
                             
                         }
                     });
                 }else { //create new company
                     console.log('Company Does not Exists...');
-                    createNewCompany().then(id=>{
+                   return createNewCompany().then(id=>{
                         if (id){
-                            createCompanyAddress(id, fileId)
+                           return createCompanyAddress(id, fileId)
                         }
                     })
                 }
@@ -396,7 +402,8 @@ export const updateFileMetadata = async ({
             FileIds:[]
         };
         
-        const newCompanyAddress = await databases.createDocument(
+        // const newCompanyAddress = await databases.createDocument(
+        return databases.createDocument(
             appwriteConfig.databaseId,
             appwriteConfig.companiesAddressCollectionId,
             ID.unique(),
@@ -404,24 +411,23 @@ export const updateFileMetadata = async ({
         )
         .catch(async (error:unknown)=>{
             handleError(error, "Failed to create CompaniesAddress document");
-        }).then( async (newCompanyAdd)=>{
+        }).then( (newCompanyAdd)=>{
             console.log('This is the new address')
             console.log(newCompanyAdd)
 
-            updateCompanyAddress(fileId, newCompanyAdd).then(companyAddId=>{
-                    getFileDocument(fileId).then(fileDocument=>{
-                        updateFile(fileId,fileDocument,companyAddId)
+           return updateCompanyAddress(fileId, newCompanyAdd).then(companyAddId=>{
+                  return getFileDocument(fileId).then(fileDocument=>{
+                       return updateFile(fileId,fileDocument,companyAddId, newCompanyAdd)
                     })
             });
             
         })
     }
 
-        (async () => {
-            const companyId = await createCompany(); // Create company and get ID
+       return (async () => {
+            const response = await createCompany(); // Create company and get ID
                 // await createCompanyAddress(companyId); // Link Address to Company
-            // }
-            //         return parseStringify(updatedFile);
+            return response;
         })();
         
     } catch(error:unknown){
@@ -436,7 +442,8 @@ export const updateFileMetadata = async ({
                     //do nothing
                     console.log('Already contains file')
                 } else { //push the fileId in storage to the address database
-
+                    
+                    console.log('Not contains file')
                     oldCompanyAdd.FileIds.push(fileId);
                     let updatedFileIds = oldCompanyAdd.FileIds;
                     
@@ -469,20 +476,32 @@ export const updateFileMetadata = async ({
             }
         }
         
-        async function updateFile(fileId:string, fileDocument:any, companyAddId:string){
+        async function updateFile(fileId:string, fileDocument:any, companyAddId:string, newCompanyAdd:any){
                     if (fileDocument.CompanyAddressIds.includes(companyAddId)){
                         //do nothing
                         console.log('Already contains file')
+                        return parseStringify(fileDocument);
                     } else { //push the fileId in storage to the address database
-    
+                        console.log('This is newCompanyAdd', newCompanyAdd)
                         fileDocument.CompanyAddressIds.push(companyAddId)//company Address Id;
-                        let updatedFileIds = fileDocument.CompanyAddressIds;
+                        fileDocument.CompanyAddress.push(newCompanyAdd.Location)//company Address Id;
+                        let updatedCoyAddIds = fileDocument.CompanyAddressIds;
+                        let updatedCoyAdds = fileDocument.CompanyAddress;
                         
-                        const updatedFile = await databases.updateDocument(
+                        // const updatedFile = await databases.updateDocument(
+                      return databases.updateDocument(
                             appwriteConfig.databaseId,
                             appwriteConfig.filesCollectionId,
                             fileId,
-                            {CompanyAddressIds:updatedFileIds})
+                            {CompanyAddressIds:updatedCoyAddIds, CompanyAddress:updatedCoyAdds})
+                            .catch(async (error:unknown)=>{
+                                handleError(error, "Failed to update file");
+                            }).then( (updatedFile)=>{
+                                console.log('This is updated file: ', updatedFile);
+                                return parseStringify(updatedFile);
+                            })
+                            // return parseStringify(updatedFile);
                         }
+
         }
     }

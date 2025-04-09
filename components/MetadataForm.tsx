@@ -22,6 +22,7 @@ import OTPModal from './OTPModal'
 import MetadataView from './MetadataView'
 import { updateFileMetadata } from '@/lib/actions/file.actions'
 import { usePathname } from 'next/navigation'
+import { useFileTickContext } from './context' ;
 
 
 type FormType = "metadata-in"  | "metadata-out";
@@ -56,6 +57,8 @@ const MetadataForm = ({ type, fileId, closeAllModals }:{ type:FormType;fileId:st
   const [errorMessage, setErrorMessage] = useState("");
   const [accountId, setAccountId] = useState(null)
   const [metadataType, setMetadataType] = useState('metadata-in')
+  const [fileMetadataSet, setFileMetadataSet] = useState(false);
+  const { setMetaDataTick } = useFileTickContext()
   const formSchema = authFormSchema(type);
   const path = usePathname();
   const form = useForm<z.infer<typeof formSchema>>({
@@ -71,7 +74,7 @@ const MetadataForm = ({ type, fileId, closeAllModals }:{ type:FormType;fileId:st
     setErrorMessage("")
     
     try {
-      const user = (type === metadataType) && await updateFileMetadata({
+      const fileDocument = (type === metadataType) && await updateFileMetadata({
         fileId:fileId,
         companyName:values.companyName,
         companyAddress:values.companyAddress,
@@ -84,7 +87,18 @@ const MetadataForm = ({ type, fileId, closeAllModals }:{ type:FormType;fileId:st
         inspectedProductLine:values.inspectedProductLine,
         gmpStatus:values.gmpStatus,
         inspectors:values.inspectors,
-        path});
+        path})
+        .then(fileDocument=>{
+          console.log('This is file Document', fileDocument)
+          console.log('This is user:', fileDocument);
+          console.log(fileDocument.CompanyAddress.includes(values.companyAddress))
+          setFileMetadataSet(fileDocument.CompanyAddress.includes(values.companyAddress));
+          // setFileMetadataSet(fileDocument.CompanyAddressIds.includes(fileId));
+          setMetaDataTick(fileDocument.CompanyAddress.includes(values.companyAddress))
+          // setMetaDataTick(fileDocument.CompanyAddressIds.includes(fileId))
+          // console.log(fileDocument)
+        });
+
 
         closeAllModals();
       // setAccountId(user.accountId)
