@@ -20,7 +20,7 @@ import Link from 'next/link'
 import { createAccount, createMetada, signInUser, updateMetadata } from '@/lib/actions/user.actions'
 import OTPModal from './OTPModal'
 import MetadataView from './MetadataView'
-import { updateFileMetadata } from '@/lib/actions/file.actions'
+import { updateFileMetadata, updateFileMetadataUpdate, upsertCompanyAndFileMetadata } from '@/lib/actions/file.actions'
 import { usePathname } from 'next/navigation'
 import { useFileTickContext } from './context' ;
 
@@ -35,17 +35,15 @@ const authFormSchema = (formType:FormType)=>{
     companyEmail:z.string().email(),
     phoneNo:z.string().max(11),
     latitude: z
-      .string()
-      .transform((val) => parseFloat(val))
-      .refine((val) => !isNaN(val) && val >= -90 && val <= 90, {
-        message: "Latitude must be between -90 and 90",
-      }),
-    longitude: z
-      .string()
-      .transform((val) => parseFloat(val))
-      .refine((val) => !isNaN(val) && val >= -180 && val <= 180, {
-        message: "Longitude must be between -180 and 180",
-      }),
+    .number()
+    .min(-90, "Latitude must be between -90 and 90")
+    .max(90, "Latitude must be between -90 and 90")
+    .optional(),
+  longitude: z
+    .number()
+    .min(-180, "Longitude must be between -180 and 180")
+    .max(180, "Longitude must be between -180 and 180")
+    .optional(),
     inspectionType:z.string(),
     inspectedProductLine:z.string(),
     gmpStatus:z.string(),
@@ -53,21 +51,30 @@ const authFormSchema = (formType:FormType)=>{
   })
 }
 
-const MetadataForm = ({ type, fileId, setInputMetadata, inputMetadata, file, closeAllModals }:{ type:FormType;fileId:string, setInputMetadata:any;inputMetadata:boolean; file:any,closeAllModals:any}) => {
+const MetadataUpdateForm = ({ type, fileId, setInputMetadata, inputMetadata, file, closeAllModals }:{ type:FormType;fileId:string, setInputMetadata:any;inputMetadata:boolean; file:any,closeAllModals:any}) => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [accountId, setAccountId] = useState(null)
   const [metadataType, setMetadataType] = useState('metadata-in')
   const [fileMetadataSet, setFileMetadataSet] = useState(false);
-  const [file1, setFile1] = useState(file);
+  const [fileUpdate, setFileUpdate] = useState(file);
   const { setMetaDataTick } = useFileTickContext()
   const formSchema = authFormSchema(type);
   const path = usePathname();
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      companyName:"", companyAddress:"" , companyEmail:"",phoneNo:"" , state:"", latitude:0, longitude:0, inspectionType:"", inspectedProductLine:""
+      companyName:fileUpdate?.name || "",
+      companyAddress:fileUpdate?.CompanyAddress[0] || "" ,
+      companyEmail:fileUpdate?.CompanyAddress || "",
+      phoneNo:"" ,
+      state:"",
+      latitude:0,
+      longitude:0,
+      inspectionType:"",
+      inspectedProductLine:""
     },
   })
   
@@ -79,7 +86,7 @@ const MetadataForm = ({ type, fileId, setInputMetadata, inputMetadata, file, clo
     
     try {
       // const fileDocument = (type === metadataType) && await updateFileMetadata({
-      const fileDocument = (metadataType === 'metadata-in') && await updateFileMetadata({
+      const fileDocument = (metadataType === 'metadata-in') && await upsertCompanyAndFileMetadata({
         fileId:fileId,
         companyName:values.companyName,
         companyAddress:values.companyAddress,
@@ -128,7 +135,7 @@ const MetadataForm = ({ type, fileId, setInputMetadata, inputMetadata, file, clo
       <form onSubmit={form.handleSubmit(onSubmit)} className="metadata-form">
         <h1 className='metadata-form-title'>{type === metadataType? "Input Metadata" : "Metadata"}
           <br/>
-          <span className='text-brand text-sm font-semibold'>{type === metadataType?"(You don't have metadata yet)":"Update metadata"}</span>
+          <span className='text-brand text-sm font-semibold'>{type === metadataType?"(Update Metadata)":"Update metadata"}</span>
         </h1>
         <FormField
           control={form.control}
@@ -138,7 +145,16 @@ const MetadataForm = ({ type, fileId, setInputMetadata, inputMetadata, file, clo
               <div className='shad-form-item'>
                 <FormLabel className='shad-form-label'>Company Name</FormLabel>
                 <FormControl>
-                 {type === metadataType? <Input placeholder="Enter Company Name" className='shad-input' {...field}/>: <p>Something</p> }
+                 {type === metadataType? <Input
+  placeholder="Enter Company Name"
+  className='shad-input'
+  {...field}
+  onChange={(e) => {
+    field.onChange(e); // update form state
+    setFileUpdate(prev => ({ ...prev, name: e.target.value })); // update local state if needed
+  }}
+/>
+: <p>Something</p> }
                 </FormControl>
               </div>
               <FormMessage className='shad-form-message' />
@@ -153,7 +169,7 @@ const MetadataForm = ({ type, fileId, setInputMetadata, inputMetadata, file, clo
               <div className='shad-form-item'>
                 <FormLabel className='shad-form-label'>Company Address</FormLabel>
                 <FormControl>
-                 {type === metadataType?  <Input placeholder="Enter your full email" className='shad-input' {...field} />: <p>Some Address</p>}
+                 {type === metadataType?  <Input placeholder="Enter your full email" className='shad-input' {...field} value={fileUpdate.name} onChange={e=>{setFileUpdate(e.target.value)}}/>: <p>Some Address</p>}
                 </FormControl>
               </div>
               <FormMessage className='shad-form-message' />
@@ -323,4 +339,4 @@ const MetadataForm = ({ type, fileId, setInputMetadata, inputMetadata, file, clo
   )
 }
 
-export default MetadataForm
+export default MetadataUpdateForm

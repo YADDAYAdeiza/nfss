@@ -30,6 +30,8 @@ import { Button } from './ui/button'
 import { usePathname } from 'next/navigation'
 import { addMetaData, deleteFile, renameFile, updateFileUsers } from '@/lib/actions/file.actions'
 import { FileDetails, ShareInput} from './ActionsModalContent'
+import MetadataUpdateForm from './MetadataUpdateForm'
+import MetadataView from './MetadataView'
 import MetadataForm from './MetadataForm'
 
 
@@ -42,12 +44,17 @@ const ActionDropdown = ({file}:{file:Models.Document}) => {
     const [isLoading, setIsLoading] = useState(false);
     const path = usePathname();
     const [emails, setEmails] = useState<string[]>([]);
+    const [inputMetadata, setInputMetadata] = useState(false);
+    const [blankMetadataForms, setBlankMetadataForms] = useState(false);
 
+// console.log('This is blankMetadataForms: ', blankMetadataForms);
     const closeAllModals = ()=>{
         setIsModalOpen(false);
         setIsDropDownOpen(false);
         setAction(null);
         setName(file.name)
+        // console.log('This is inputMetadata: ', inputMetadata)
+
     }
 
     const handleAction = async ()=>{
@@ -91,7 +98,6 @@ const ActionDropdown = ({file}:{file:Models.Document}) => {
         if (!action) return null;
 
         const {value, label} = action;
-
         return (
         <DialogContent className='shad-dialog button'>
             <DialogHeader className='flex flex-col gap-3'>
@@ -114,7 +120,10 @@ const ActionDropdown = ({file}:{file:Models.Document}) => {
                         <span className='delete-file-name'>{file.name}</span>
                     </p>
                 )}
-                {value === 'metadata' && <MetadataForm type='metadata-in' fileId = {file.$id} closeAllModals = {closeAllModals}/>}
+                {((file.CompanyAddressIds.length >0 && value === 'metadata') ? <MetadataView setInputMetadata={setInputMetadata} setBlankMetadataForms={setBlankMetadataForms} inputMetadata={inputMetadata} file={file}/>: blankMetadataForms?<div></div>:<MetadataForm type='metadata-in' fileId = {file.$id} setInputMetadata={setInputMetadata} inputMetadata ={inputMetadata} file={file} closeAllModals = {closeAllModals}/>)}
+                {/* {!inputMetadata?((file.CompanyAddressIds.length >0 && value === 'metadata') ? <MetadataView setInputMetadata={setInputMetadata} inputMetadata={inputMetadata} file={file}/>: <MetadataForm type='metadata-in' fileId = {file.$id} inputMetadata={inputMetadata} file={file} closeAllModals = {closeAllModals}/>):<div></div>} */}
+                {inputMetadata ?<MetadataUpdateForm type='metadata-in' fileId = {file.$id} file={file} closeAllModals = {closeAllModals} setInputMetadata={setInputMetadata} inputMetadata={inputMetadata}/>:<div></div>}
+                {/* {inputMetadata && <div></div>} */}
 
             </DialogHeader>
             {["rename", "delete", "share"].includes(value)&&(

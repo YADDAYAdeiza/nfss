@@ -1,7 +1,14 @@
-// "use client"
+"use client"
 
-import React from 'react'
+import React, { useState } from 'react'
 import { Button } from './ui/button';
+import {ImageThumbnail} from './ActionsModalContent'
+import {DetailRow} from './ActionsModalContent'
+import { Models } from 'node-appwrite';
+import { Divide } from 'lucide-react';
+import Link from 'next/link';
+
+
 
 const MetadataItems = ({item, value}:{item:string;value:string})=>{
     return <div className='flex gap-2'>
@@ -10,25 +17,41 @@ const MetadataItems = ({item, value}:{item:string;value:string})=>{
     </div>
 }
 
-const MetadataView = ({activateUpdate}:{activateUpdate:any}) => {
+const MetadataView = ({setInputMetadata, setBlankMetadataForms, inputMetadata, file}:{setInputMetadata:any;setBlankMetadataForms:any; inputMetadata:boolean; file:Models.Document}) => {
+    const [hideMetadataView, setHideMetadataView] =  useState(false);
     const updateMetadata = ()=>{
         console.log('Clicked...')
-        activateUpdate('metadata-out')
+        setInputMetadata(true)
+        setHideMetadataView(!hideMetadataView)
+        setBlankMetadataForms(true);
     }
-  return (
-    <div className='flex flex-col justify-center max-h-100 gap-5'>
-     <MetadataItems item='companyName' value='DecoyCompanyName' />
-     <MetadataItems item='companyAddress' value='DecoyCompanyNameAddress' />
-     <MetadataItems item='InspectionType' value='DecoyInspectionType' />
+    return (
+       <>
 
-     <Button 
-        className='bg-brand form-submit-button'
-        onClick = {()=>{updateMetadata()}}
-        >
-            Update
-        </Button>
-    </div>
-  )
+            {!hideMetadataView? 
+            <div>
+                <ImageThumbnail file={file} />
+                <div className='space-y-4 px-2 pt-2'>
+                <DetailRow label="Name of Company" value={file.name}/>
+                <DetailRow label="Address" value={file.CompanyAddress[0]}/>
+                <DetailRow label="State" value={file.CompanyAddress[0]}/>
+                <DetailRow label="Inspection Type" value={file.CompanyAddress[0]}/>
+                <DetailRow label="Lead Inspector" value={file.CompanyAddress[0]}/>
+                </div>
+                <Button 
+                className='bg-brand w-full mt-4 rounded-2xl'
+                onClick = {()=>{updateMetadata()}}
+                >
+                Update
+                </Button>
+            </div>:
+            <div>
+                <Link href={'/documelnts'}>
+                    <ImageThumbnail file={file} />
+                </Link>
+            </div>}
+        </>
+      )
 }
 
 export default MetadataView

@@ -19,6 +19,13 @@ declare interface UploadFileProps {
   accountId: string;
   path: string;
 }
+declare interface UploadFileProps2 {
+  file: File;
+  ownerId: string;
+  accountId: string;
+  path: string;
+  metadata:any;
+}
 declare interface GetFilesProps {
   types: FileType[];
   searchText?: string;

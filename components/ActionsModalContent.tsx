@@ -7,7 +7,7 @@ import { Input } from './ui/input'
 import { Button } from './ui/button'
 import Image from 'next/image'
 
-const ImageThumbnail = ({file}:{file:Models.Document})=>(
+export const ImageThumbnail = ({file}:{file:Models.Document})=>(
     <div className='file-details-thumbnail'>
       <Thumbnail type={file.type} extension={file.extension} url={file.url} />  
       <div className='flex flex-col'>
@@ -17,7 +17,7 @@ const ImageThumbnail = ({file}:{file:Models.Document})=>(
     </div>
 )
 
-const DetailRow = ({label, value}:{label:string; value:string})=>(
+export const DetailRow = ({label, value}:{label:string; value:string})=>(
     <div className='flex'>
         <p className='file-details-label text-left'>{label}</p>
         <p className='file-details-value text-left'>{value}</p>
