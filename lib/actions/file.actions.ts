@@ -3,10 +3,17 @@
 import { createAdminClient } from "../appwrite";
 import {InputFile} from "node-appwrite/file";
 import { appwriteConfig } from "../appwrite/config";
-import { ID, Models, Query } from "node-appwrite";
+import { Account, Client, ID, Models, Query } from "node-appwrite";
 import { constructFileUrl, getFileType, parseStringify } from "../utils";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "./user.actions";
+
+const client = new Client()
+        .setEndpoint(appwriteConfig.endpointURL)
+        .setProject(appwriteConfig.projectId)
+        .setKey(appwriteConfig.secretKey)
+
+const account = new Account(client);
 
 const handleError = (error:unknown, message:string)=>{
     console.log(error, message);
@@ -71,6 +78,15 @@ const handleError = (error:unknown, message:string)=>{
 
 export const uploadFile = async({file, ownerId, accountId, path, metadata}:UploadFileProps2)=>{
     console.log('This is path1:', path)
+
+    // Get current user
+      account.get()
+      .then(response => {
+        console.log('Logged in user:', response);
+      })
+      .catch(error => {
+        console.error('Error fetching user:', error);
+      });
     const {storage, databases} = await createAdminClient();
 
     try {

@@ -19,8 +19,6 @@ import { z } from "zod";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form'
 import { Input } from './ui/input'
 import { FormProvider } from "react-hook-form";
-import { CompanyAndAddressMetadataCombobox } from './CompanyAndAddressMetadataCombobox'
-import Trial from './Trial'
 
 
 type Metadata = z.infer<typeof metadataSchema>;
@@ -208,22 +206,8 @@ const onDrop = useCallback(
     {showMetadata && (
       <FormProvider {...form}>
         <form className="mt-4 grid gap-4 grid-cols-1 sm:grid-cols-2">
-          <Trial />
-          <CompanyAndAddressMetadataCombobox
-            companyName={form.watch("companyName")}
-            companyAddress={form.watch("companyAddress")}
-            onCompanyChange={(name, id) => {
-              form.setValue("companyName", name)
-              // Optionally store companyId if needed
-            }}
-            onAddressChange={(address, meta) => {
-              form.setValue("companyAddress", address)
-              form.setValue("state", meta.state)
-              form.setValue("latitude", meta.latitude)
-              form.setValue("longitude", meta.longitude)
-            }}
-          />
-
+          {renderField("companyName", "Company Name", "e.g. ACME Corp")}
+          {renderField("companyAddress", "Company Address", "e.g. 123 Main St")}
           {renderField("companyEmail", "Company Email", "@.com")}
           {renderField("phoneNo", "Phone Number", "Phone No.")}
           {renderField("latitude", "Latitude", "e.g. 34.0522")}
