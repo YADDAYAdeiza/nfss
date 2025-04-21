@@ -221,6 +221,8 @@ const onDrop = useCallback(
               form.setValue("state", meta.state)
               form.setValue("latitude", meta.latitude)
               form.setValue("longitude", meta.longitude)
+              form.setValue("companyEmail", meta.email)
+              form.setValue("phoneNo", meta.phone)
             }}
           />
 

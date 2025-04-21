@@ -40,7 +40,9 @@ interface CompanyMetadataComboboxProps {
     addressMetadata: {
       state: string
       latitude: number
-      longitude: number
+      longitude: number,
+      email:string,
+      phone:string
     }
   ) => void
 }
@@ -182,7 +184,7 @@ const CompanyAddressCombobox = ({
 }: {
   value: string
   companyId: string
-  onChange: (val: string, meta: { state: string; latitude: number; longitude: number }) => void
+  onChange: (val: string, meta: { state: string; latitude: number; longitude: number; email:string; phone:number }) => void
 }) => {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState("")
@@ -192,9 +194,10 @@ const CompanyAddressCombobox = ({
     debounce(async () => {
       try {
         const res = await databases.listDocuments(appwriteConfig.databaseId, appwriteConfig.companiesAddressCollectionId, [
-          Query.equal("companyId", companyId),
+          Query.equal("CompanyId", companyId),
         ])
         setAddresses(res.documents)
+        console.log(res);
       } catch (err) {
         console.error("Error fetching addresses:", err)
       }
@@ -209,13 +212,17 @@ const CompanyAddressCombobox = ({
   }, [companyId, fetchAddresses])
 
   const handleSelect = async (addressVal: string) => {
-    const existing = addresses.find((addr) => addr.address === addressVal)
+    console.log('Selected location: ', addressVal)
+    const existing = addresses.find((addr) => addr.Location === addressVal)
 
     if (existing) {
-      onChange(existing.address, {
-        state: existing.state,
-        latitude: existing.latitude,
-        longitude: existing.longitude,
+    console.log('Found: ', existing)
+      onChange(existing.Location, {
+        state: existing.State,
+        latitude: existing.Lat,
+        longitude: existing.Lng,
+        email:existing.Email,
+        phone:existing.PhoneNo
       })
     } else {
       const newDoc = await databases.createDocument(appwriteConfig.databaseId, appwriteConfig.companiesAddressCollectionId, ID.unique(), {
@@ -259,8 +266,8 @@ const CompanyAddressCombobox = ({
             </CommandEmpty>
             <CommandGroup>
               {addresses.map((addr) => (
-                <CommandItem key={addr.$id} onSelect={() => handleSelect(addr.address)}>
-                  {addr.address}
+                <CommandItem key={addr.$id} onSelect={() => handleSelect(addr.Location)}>
+                  {addr.Location}
                 </CommandItem>
               ))}
             </CommandGroup>
