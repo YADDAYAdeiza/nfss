@@ -78,6 +78,7 @@ const handleError = (error:unknown, message:string)=>{
 
 export const uploadFile = async({file, ownerId, accountId, path, metadata}:UploadFileProps2)=>{
     console.log('This is path1:', path)
+    console.log('This is accountId1:', accountId)
 
     // Get current user
       account.get()
@@ -92,52 +93,58 @@ export const uploadFile = async({file, ownerId, accountId, path, metadata}:Uploa
     try {
         console.log('Trying...to...')
         console.log(file)
-        // const inputFile = InputFile.fromBuffer(file, file.name);
-        const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        const inputFile = InputFile.fromBuffer(buffer, file.name);
-        console.log(inputFile)
-        const bucketFile = await storage.createFile(
-            appwriteConfig.bucketId,
-            ID.unique(),
-            inputFile,
-        );
+        if (file){
 
-        const fileDocument={
-            type:getFileType(bucketFile.name).type,
-            name:bucketFile.name,
-            url:constructFileUrl(bucketFile.$id),
-            extension:getFileType(bucketFile.name).extension,
-            size:bucketFile.sizeOriginal,
-            owner:ownerId,
-            accountId,
-            users:[],
-            bucketFileId: bucketFile.$id,
-            CompanyAddressIds:[],
-            CompanyAddress:[],
-            InspectionType:'',
-            InspectedProductLine:'',
-            GMPStatus:'',
-            Inspectors:''
-        };
-
-        await databases.createDocument(
-            appwriteConfig.databaseId,
-            appwriteConfig.filesCollectionId,
-            ID.unique(),
-            fileDocument,
-        )
-        .catch(async (error:unknown)=>{
-            await storage.deleteFile(appwriteConfig.bucketId, bucketFile.$id);
-            handleError(error, "Failed to create file document");
-        }).then (newFile=>{
-            console.log('This is metadata: ', metadata);
-            console.log('This is new File Id', newFile.$id);
-            updateFileMetadata2({...metadata, fileId: newFile.$id, path:path});
-            revalidatePath(path);
-            return parseStringify(newFile);
-            
-        })
+            // const inputFile = InputFile.fromBuffer(file, file.name);
+            const arrayBuffer = await file.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            const inputFile = InputFile.fromBuffer(buffer, file.name);
+            console.log(inputFile)
+            const bucketFile = await storage.createFile(
+                appwriteConfig.bucketId,
+                ID.unique(),
+                inputFile,
+            );
+    
+            const fileDocument={
+                type:getFileType(bucketFile.name).type,
+                name:bucketFile.name,
+                url:constructFileUrl(bucketFile.$id),
+                extension:getFileType(bucketFile.name).extension,
+                size:bucketFile.sizeOriginal,
+                owner:ownerId,
+                accountId,
+                users:[],
+                bucketFileId: bucketFile.$id,
+                CompanyAddressIds:[],
+                CompanyAddress:[],
+                InspectionType:'',
+                InspectedProductLine:'',
+                GMPStatus:'',
+                Inspectors:''
+            };
+    
+            await databases.createDocument(
+                appwriteConfig.databaseId,
+                appwriteConfig.filesCollectionId,
+                ID.unique(),
+                fileDocument,
+            )
+            .catch(async (error:unknown)=>{
+                await storage.deleteFile(appwriteConfig.bucketId, bucketFile.$id);
+                handleError(error, "Failed to create file document");
+            }).then (newFile=>{
+                console.log('This is metadata: ', metadata);
+                console.log('This is new File Id', newFile.$id);
+                updateFileMetadata2({...metadata, fileId: newFile.$id, path:path,owner:ownerId, accountId:accountId});
+                revalidatePath(path);
+                return parseStringify(newFile);
+                
+            })
+        } else{
+            console.log('Caling upateFileMetadata3')
+           return updateFileMetadata3({...metadata, fileId: 'ToBeLinked', path:path, owner:ownerId, accountId});
+        }
         
         
         //call update the other fields?
@@ -147,6 +154,42 @@ export const uploadFile = async({file, ownerId, accountId, path, metadata}:Uploa
     }
 
 }
+
+// file.actions.ts
+
+// export const uploadMetadata = async ({
+//   metadata,
+//   ownerId,
+//   accountId,
+//   path,
+// }: {
+//   metadata: any;
+//   ownerId: string;
+//   accountId: string;
+//   path: string;
+// }) => {
+//   try {
+//     const {storage, databases} = await createAdminClient();
+//     console.log('This is metadata: ', metadata);
+//     const response = await databases.createDocument(
+//       appwriteConfig.databaseId,
+//       appwriteConfig.filesCollectionId,
+//       ID.unique(),
+//       {
+//         ...metadata,
+//         ownerId,
+//         accountId,
+//         uploadPath: path,
+//       }
+//     );
+
+//     return { success: true, data: response };
+//   } catch (error) {
+//     console.error('Metadata upload error:', error);
+//     return { success: false, error };
+//   }
+// };
+
 
 const createQueries = (currentUser:Models.Document, types:string[], searchText:string, sort:string, limit?:number)=>{
     const queries = [
@@ -402,15 +445,20 @@ export const updateFileMetadata = async ({
                             console.log('This is exists: ');
                             console.log(exists);
                            return updateCompanyAddress(fileId, exists.documents[0]).then(companyAddId=>{
-                              return  getFileDocument(fileId).then(fileDocument=>{
-                                  return  updateFile(fileId,fileDocument,companyAddId, exists).then(fileDocument=>{
-                                        console.log('This is the document...')
-                                        console.log(fileDocument)
-                                        return parseStringify(fileDocument);
-                                        
-                                    })
-
-                                })
+                            console.log('This is fileId: ', fileId);
+                            if (fileId){
+                                return  getFileDocument(fileId).then(fileDocument=>{
+                                    return  updateFile(fileId,fileDocument,companyAddId, exists).then(fileDocument=>{
+                                          console.log('This is the document...')
+                                          console.log(fileDocument)
+                                          return parseStringify(fileDocument);
+                                          
+                                      })
+  
+                                  })
+                            }else{
+                                return null;
+                            }
                             });
                             //update File with CompanyAddressId
                             // return 0;
@@ -609,7 +657,9 @@ export const updateFileMetadata2 = async ({
         inspectedProductLine,
         gmpStatus,
         inspectors,
-        path
+        path,
+        owner:ownerId,
+        accountId
 }:{
     fileId:string;
     companyName:string;
@@ -624,12 +674,15 @@ export const updateFileMetadata2 = async ({
         gmpStatus:string;
         inspectors:string;
         path:string;
+        owner:string;
+        accountId:string;
 }) => {
     const { databases } = await createAdminClient();
-
+    console.log('AccountID within updateFileMetadata2:', accountId);
     try {
         console.log()
         async function getFileDocument(fileId:string){
+            console.log('Inside getFileDoc');
             return databases.getDocument(
                 appwriteConfig.databaseId,
                 appwriteConfig.filesCollectionId,
@@ -663,20 +716,29 @@ export const updateFileMetadata2 = async ({
                     console.log('This is companyAddress: ',companyAddress);
                   return  checkIfAddressExists(cId, companyAddress, fileId).then(exists => { // fileId is passed in case address exists, still to update it
                         if (exists) {
-                            console.log("Address already exists, do not insert again.");
+                            console.log("Address already exists, do not insert again2.");
                             //update existing address with fileStorage id;
                             console.log('This is exists: ');
-                            // console.log(exists);
+                            console.log(exists);
                            return updateCompanyAddress(fileId, exists.documents[0]).then(companyAddId=>{
-                              return  getFileDocument(fileId).then(fileDocument=>{
-                                  return  updateFile(fileId,fileDocument,companyAddId, exists).then(fileDocument=>{
+                            // if (fileId === 'ToBeLinked'){
+                            //     //create a file
+                            //         // return {fileId:'ToBeLinked'}; //placeholder fileDocument
+                            //        return CreateFile(exists.documents[0], companyAddress, companyAddId)
+                            // }else {
+                                    //return proper fileDocument
+                                    return  getFileDocument(fileId).then(fileDocument=>{
                                         console.log('This is the document...')
-                                        // console.log(fileDocument)
-                                        return parseStringify(fileDocument);
+                                        console.log('This is the fileId...', fileId)
+                                        // return  updateFile(fileId,fileDocument,companyAddId, exists).then(fileDocument=>{
+                                        return  CreateFile(companyAddress, fileId).then(fileDocument=>{
+                                            // console.log(fileDocument)
+                                            return parseStringify(fileDocument);
+                                            
+                                        })
                                         
                                     })
-
-                                })
+                                // }
                             });
                             //update File with CompanyAddressId
                             // return 0;
@@ -770,7 +832,8 @@ export const updateFileMetadata2 = async ({
            return updateCompanyAddress(fileId, newCompanyAdd).then(companyAddId=>{
                 console.log('This is fileId inside: ', fileId)
                   return getFileDocument(fileId).then(fileDocument=>{
-                       return updateFile(fileId,fileDocument,companyAddId, newCompanyAdd)
+                    //    return updateFile(fileId,fileDocument,companyAddId, newCompanyAdd)
+                       return CreateFile(newCompanyAdd, fileId)
                     })
             });
             
@@ -832,46 +895,367 @@ export const updateFileMetadata2 = async ({
                 appwriteConfig.companiesCollectionId,
                 oldCompany.$id,
                 {FileIds:updatedFileIds})
+
+                // return updatedFile;
             }
         }
         
         async function updateFile(fileId:string, fileDocument:any, companyAddId:string, newCompanyAdd:any){
-    fileDocument.CompanyAddressIds = fileDocument.CompanyAddressIds || [];
-    fileDocument.CompanyAddress = fileDocument.CompanyAddress || [];
+            fileDocument.CompanyAddressIds = fileDocument.CompanyAddressIds || [];
+            fileDocument.CompanyAddress = fileDocument.CompanyAddress || [];
 
-    if (fileDocument.CompanyAddressIds.includes(companyAddId)){
-        console.log('Already contains file');
-        return parseStringify(fileDocument);
-    } else {
-        console.log('Does not contains file2');
-        fileDocument.CompanyAddressIds.push(companyAddId);
-        fileDocument.CompanyAddress.push(newCompanyAdd.Location);
-        
-        let updatedCoyAddIds = fileDocument.CompanyAddressIds;
-        let updatedCoyAdds = fileDocument.CompanyAddress;
+            if (fileDocument.CompanyAddressIds.includes(companyAddId)){
+                console.log('Already contains file');
+                return parseStringify(fileDocument);
+            } else {
+                console.log('Does not contains file2');
+                fileDocument.CompanyAddressIds.push(companyAddId);
+                fileDocument.CompanyAddress.push(newCompanyAdd.Location);
+                
+                let updatedCoyAddIds = fileDocument.CompanyAddressIds;
+                let updatedCoyAdds = fileDocument.CompanyAddress;
 
-        return databases.updateDocument(
-            appwriteConfig.databaseId,
-            appwriteConfig.filesCollectionId,
-            fileId,
-            {
-                CompanyAddressIds: updatedCoyAddIds,
-                CompanyAddress: updatedCoyAdds,
-                InspectionType: inspectionType,
-                InspectedProductLine: inspectedProductLine,
-                GMPStatus: gmpStatus,
-                Inspectors: inspectors
+                return databases.updateDocument(
+                    appwriteConfig.databaseId,
+                    appwriteConfig.filesCollectionId,
+                    fileId,
+                    {
+                        CompanyAddressIds: updatedCoyAddIds,
+                        CompanyAddress: updatedCoyAdds,
+                        InspectionType: inspectionType,
+                        InspectedProductLine: inspectedProductLine,
+                        GMPStatus: gmpStatus,
+                        Inspectors: inspectors
+                    }
+                )
+                .catch(async (error: unknown) => {
+                    handleError(error, "Failed to update file");
+                }).then(updatedFile => {
+                    return parseStringify(updatedFile);
+                });
             }
-        )
-        .catch(async (error: unknown) => {
-            handleError(error, "Failed to update file");
-        }).then(updatedFile => {
-            return parseStringify(updatedFile);
-        });
-    }
+        }
+
+        //Another copy of CreateFile, to keep it in scope
+        async function CreateFile(companyAddress:string, fileId:string){
+            console.log('Within scope, this is fileId: ', fileId)
+            console.log('Within scope, this is companyAddress: ', companyAddress)
+            const {storage, databases} = await createAdminClient();
+              databases.listDocuments(
+                    appwriteConfig.databaseId,
+                    appwriteConfig.companiesAddressCollectionId,
+                    [Query.equal('Location',companyAddress)]).catch(async (error:unknown)=>{
+                    handleError(error, "Failed to List Entry")
+                    })
+                    .then(async listedDocuments=>{
+                        console.log('Listed Docs:', listedDocuments)
+                        const fileInfo={
+                           files:fileId,//fileId?fileId:'To Be Linked',
+                           CompanyAddressIds:listedDocuments.documents[0].$id,
+                           CompanyAddress:companyAddress,
+                           InspectionType:inspectionType,
+                           InspectedProductLine:inspectedProductLine,
+                           GMPStatus:gmpStatus,
+                           Inspectors:inspectors
+                       };
+                       return databases.createDocument(
+                               appwriteConfig.databaseId,
+                               appwriteConfig.fileSummaryCollectionId,
+                               ID.unique(),
+                               fileInfo
+                           ).catch(async (error:unknown)=>{
+                               handleError(error, "Failed to file Summary Entry");
+                           }).then((newFileDocument)=>{
+                               console.log('New doc: ', newFileDocument)
+                               console.log(newFileDocument);
+                               return newFileDocument
+                           })
+                                  
+
+                    })
+                    
+
+        }          
+    
+        async function CreateFileDocument(companyAddId:string){
+
+            const fileInfo={
+                FilesId:'To Be Linked',
+                CompanyAddressIds:[companyAddId],
+                CompanyAddress:[companyAddress],
+                InspectionType:inspectionType,
+                InspectedProductLine:inspectedProductLine,
+                GMPStatus:gmpStatus,
+                Inspectors:inspectors
+            };
+            return databases.createDocument(
+                    appwriteConfig.databaseId,
+                    appwriteConfig.fileSummaryCollectionId,
+                    ID.unique(),
+                    fileInfo
+                ).catch(async (error:unknown)=>{
+                    handleError(error, "Failed to file Summary Entry");
+                }).then((newFileDocument)=>{
+                    console.log('New doc: ', newFileDocument)
+                    console.log(newFileDocument);
+                    return newFileDocument
+                })
+                                            
+        }
 }
 
+        
+
+    export const updateFileMetadata3 = async ({
+    fileId,
+    companyName,
+        companyAddress,
+        state,
+        companyEmail,
+        phoneNo,
+        latitude,
+        longitude,
+        inspectionType,
+        inspectedProductLine,
+        gmpStatus,
+        inspectors,
+        path,owner:ownerId,
+        accountId
+}:{
+    fileId:string;
+    companyName:string;
+        companyAddress:string;
+        state:string;
+        companyEmail:string;
+        phoneNo:string;
+        latitude:number;
+        longitude:number;
+        inspectionType:string;
+        inspectedProductLine:string;
+        gmpStatus:string;
+        inspectors:string;
+        path:string;
+        owner:string;
+        accountId:string;
+}) => {
+    const { databases } = await createAdminClient();
+
+        async function CreateFile(companyAddress:string){
+            const {storage, databases} = await createAdminClient();
+             return databases.listDocuments(
+                    appwriteConfig.databaseId,
+                    appwriteConfig.companiesAddressCollectionId,
+                    [Query.equal('Location',companyAddress)]).catch(async (error:unknown)=>{
+                    handleError(error, "Failed to List Entry")
+                    })
+                    .then(async listedDocuments=>{
+                        console.log('Listed Docs:', listedDocuments)
+                        const fileInfo={
+                           files:'To Be Linked',
+                           CompanyAddressIds:listedDocuments.documents[0].$id,
+                           CompanyAddress:companyAddress,
+                           InspectionType:inspectionType,
+                           InspectedProductLine:inspectedProductLine,
+                           GMPStatus:gmpStatus,
+                           Inspectors:inspectors
+                       };
+                       return databases.createDocument(
+                               appwriteConfig.databaseId,
+                               appwriteConfig.fileSummaryCollectionId,
+                               ID.unique(),
+                               fileInfo
+                           ).catch(async (error:unknown)=>{
+                               handleError(error, "Failed to file Summary Entry");
+                           }).then((newFileDocument)=>{
+                               console.log('New doc: ', newFileDocument)
+                               console.log(newFileDocument);
+                               return newFileDocument
+                           })
+                                  
+
+                    })
+                    
+
+        }          
+    
+        async function CreateFileDocument(companyAddId:string){
+
+            const fileInfo={
+                FilesId:'To Be Linked',
+                CompanyAddressIds:[companyAddId],
+                CompanyAddress:[companyAddress],
+                InspectionType:inspectionType,
+                InspectedProductLine:inspectedProductLine,
+                GMPStatus:gmpStatus,
+                Inspectors:inspectors
+            };
+            return databases.createDocument(
+                    appwriteConfig.databaseId,
+                    appwriteConfig.fileSummaryCollectionId,
+                    ID.unique(),
+                    fileInfo
+                ).catch(async (error:unknown)=>{
+                    handleError(error, "Failed to file Summary Entry");
+                }).then((newFileDocument)=>{
+                    console.log('New doc: ', newFileDocument)
+                    console.log(newFileDocument);
+                    return newFileDocument
+                })
+                                            
+        }
+    
+
+     return (async () => {
+            const response = await CreateFile(companyAddress); // Create company and get ID
+                // await createCompanyAddress(companyId); // Link Address to Company
+                console.log('Response returned: ', response)
+            return response;
+        })();
     }
+
+
+    async function updateMetadataWithFileId(metadataId: string, fileId: string) {
+        const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!;
+        const collectionId = process.env.NEXT_PUBLIC_APPWRITE_METADATA_COLLECTION_ID!;
+        const {storage, databases} = await createAdminClient();
+
+        try {
+            const response = await databases.updateDocument(
+            appwriteConfig.databaseId,
+            appwriteConfig.fileSummaryCollectionId,
+            metadataId,
+            {
+                files: fileId, // or push into array if multiple files allowed
+            }
+            );
+            console.log('Metadata updated with fileId:', response);
+            return response;
+        } catch (error) {
+            console.error('Error linking file to metadata:', error);
+            throw error;
+        }
+}
+
+
+//     async function updateCompanyAddress(fileId:string, oldCompanyAdd:any){
+//     oldCompanyAdd.FileIds = oldCompanyAdd.FileIds || [];
+
+//     if (oldCompanyAdd.FileIds.includes(fileId)){
+//         console.log('Already contains file')
+//     } else {
+//         console.log('Not contains file');
+//         oldCompanyAdd.FileIds.push(fileId);
+//         let updatedFileIds = oldCompanyAdd.FileIds;
+
+//         return await databases.updateDocument(
+//             appwriteConfig.databaseId,
+//             appwriteConfig.companiesAddressCollectionId,
+//             oldCompanyAdd.$id,
+//             { FileIds: updatedFileIds }
+//         )
+//         .catch(async (error:unknown)=>{
+//             handleError(error, "Yup 2");
+//         }).then(updatedFile => {
+//             console.log('Updated File: ', updatedFile);
+//             return updatedFile.$id;
+//         });
+//     }
+// }
+
+    
+//     async function updateCompany(fileId:string, oldCompany:any){
+//         if (oldCompany.FileIds.includes(fileId)){
+//             //do nothing
+//             console.log('Already contains file')
+//         } else { //push the fileId in storage to the address database
+//             console.log('Does not contain file...')
+            
+//             // oldCompany.FileIds.push(fileId);
+//             let updatedFileIds = [ ...oldCompany.FileIds, fileId];
+            
+//             const updatedFile = await databases.updateDocument(
+//                 appwriteConfig.databaseId,
+//                 appwriteConfig.companiesCollectionId,
+//                 oldCompany.$id,
+//                 {FileIds:updatedFileIds})
+
+//                 // return updatedFile;
+//             }
+//         }
+        
+//         async function updateFile(fileId:string, fileDocument:any, companyAddId:string, newCompanyAdd:any){
+//             fileDocument.CompanyAddressIds = fileDocument.CompanyAddressIds || [];
+//             fileDocument.CompanyAddress = fileDocument.CompanyAddress || [];
+
+//             if (fileDocument.CompanyAddressIds.includes(companyAddId)){
+//                 console.log('Already contains file');
+//                 return parseStringify(fileDocument);
+//             } else {
+//                 console.log('Does not contains file2');
+//                 fileDocument.CompanyAddressIds.push(companyAddId);
+//                 fileDocument.CompanyAddress.push(newCompanyAdd.Location);
+                
+//                 let updatedCoyAddIds = fileDocument.CompanyAddressIds;
+//                 let updatedCoyAdds = fileDocument.CompanyAddress;
+
+//                 return databases.updateDocument(
+//                     appwriteConfig.databaseId,
+//                     appwriteConfig.filesCollectionId,
+//                     fileId,
+//                     {
+//                         CompanyAddressIds: updatedCoyAddIds,
+//                         CompanyAddress: updatedCoyAdds,
+//                         InspectionType: inspectionType,
+//                         InspectedProductLine: inspectedProductLine,
+//                         GMPStatus: gmpStatus,
+//                         Inspectors: inspectors
+//                     }
+//                 )
+//                 .catch(async (error: unknown) => {
+//                     handleError(error, "Failed to update file");
+//                 }).then(updatedFile => {
+//                     return parseStringify(updatedFile);
+//                 });
+//             }
+//         }
+    // }
+
+    //     async function CreateFile(companyAddress:string, companyAddId:string){
+    //         const {storage, databases} = await createAdminClient();
+
+    //         const fileDocument={
+    //                     type:'document',//getFileType(bucketFile.name).type,
+    //                     name:'name', //bucket
+    //                     url:constructFileUrl('123'),//bucket
+    //                     extension:'.nothing',//bucket
+    //                     size:23,//bucket
+    //                     owner:ownerId,
+    //                     accountId:accountId,
+    //                     users:[],
+    //                     bucketFileId:'125',// bucketFile.$id,
+    //                     CompanyAddressIds:[companyAddId],
+    //                     CompanyAddress:[companyAddress],
+    //                     InspectionType:inspectionType,
+    //                     InspectedProductLine:inspectedProductLine,
+    //                     GMPStatus:gmpStatus,
+    //                     Inspectors:inspectors
+    //                 };
+    //         return databases.createDocument(
+    //                                         appwriteConfig.databaseId,
+    //                                         appwriteConfig.filesCollectionId,
+    //                                         ID.unique(),
+    //                                         fileDocument
+    //                                     ).catch(async (error:unknown)=>{
+    //                                             handleError(error, "Failed to create Companies document");
+    //                                     }).then((newFileDocument)=>{
+    //                                         console.log('New doc: ', newFileDocument)
+    //                                         return newFileDocument
+    //                                     })
+
+    //     }
+
+    // }
+
 
 
 //     export const updateFileMetadataUpdate = async ({
@@ -1783,6 +2167,9 @@ try { // 1. Get the file
 
     console.log("Update complete");
 
-
-
+    
+    
+    
 } catch (error) { handleError(error, "Failed to update existing metadata"); } finally { revalidatePath(path); } };
+
+
