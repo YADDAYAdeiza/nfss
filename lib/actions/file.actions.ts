@@ -76,9 +76,11 @@ const handleError = (error:unknown, message:string)=>{
 
 // }
 
-export const uploadFile = async({file, ownerId, accountId, path, metadata}:UploadFileProps2)=>{
+export const uploadFile = async({file, ownerId, accountId, path, metadata,linkedMetadataId }:UploadFileProps2)=>{
     console.log('This is path1:', path)
     console.log('This is accountId1:', accountId)
+   console.log('This is metadata: ', metadata)
+   console.log('This is metadata linked...: ', linkedMetadataId)
 
     // Get current user
       account.get()
@@ -92,7 +94,7 @@ export const uploadFile = async({file, ownerId, accountId, path, metadata}:Uploa
 
     try {
         console.log('Trying...to...')
-        console.log(file)
+        // console.log(file)
         if (file){
 
             // const inputFile = InputFile.fromBuffer(file, file.name);
@@ -138,9 +140,19 @@ export const uploadFile = async({file, ownerId, accountId, path, metadata}:Uploa
                 console.log('This is new File Id', newFile.$id);
                 updateFileMetadata2({...metadata, fileId: newFile.$id, path:path,owner:ownerId, accountId:accountId});
                 revalidatePath(path);
-                return parseStringify(newFile);
+
+                if(!linkedMetadataId){ // if linked metadata is not supplied
+                    console.log('Near parseStringify: ', linkedMetadataId);
+                    return parseStringify(newFile);
+
+                }else{ //if linkedMetadata is supplied
+                    console.log('Inside linkedMetadataId,this is file now: ', newFile);
+                    updateMetadataWithFileId(linkedMetadataId, newFile.$id);
+                }
                 
             })
+            
+
         } else{
             console.log('Caling upateFileMetadata3')
            return updateFileMetadata3({...metadata, fileId: 'ToBeLinked', path:path, owner:ownerId, accountId});
@@ -1115,8 +1127,7 @@ export const updateFileMetadata2 = async ({
 
 
     async function updateMetadataWithFileId(metadataId: string, fileId: string) {
-        const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!;
-        const collectionId = process.env.NEXT_PUBLIC_APPWRITE_METADATA_COLLECTION_ID!;
+        console.log('Inside updateMet...');
         const {storage, databases} = await createAdminClient();
 
         try {

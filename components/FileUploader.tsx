@@ -104,6 +104,7 @@ const FileUploader = ({ ownerId, accountId, className }: Props) => {
       }
 
       const uploadPromises = acceptedFiles.map(async (file) => {
+        console.log('Uploading on ...click');
         if (file.size > MAX_FILE_SIZE) {
           setFiles((prev) => prev.filter((f) => f.name !== file.name));
           return toast("File Size Issues", {

@@ -26,6 +26,7 @@ declare interface UploadFileProps2 {
   accountId: string;
   path: string;
   metadata:any;
+  linkedMetadataId:string|undefined;
 }
 
 declare interface GetFilesProps {
