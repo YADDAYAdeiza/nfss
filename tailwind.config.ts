@@ -7,6 +7,9 @@ const config: Config = {
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  safelist: [
+    'bg-red-100',
+  ],
   plugins: [require('@tailwindcss/typography')],
   theme: {
   	extend: {
